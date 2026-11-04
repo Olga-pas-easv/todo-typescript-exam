@@ -5,6 +5,10 @@ A TypeScript todo app for the KW and TBMH exams.
 Based on the
 [starter project by Kristian Wittrup](https://github.com/kristian-wittrup/2024-todo-TS-app-bde).
 
+Website address after the first successful deployment:
+
+https://olga-pas-easv.github.io/todo-typescript-exam/
+
 ## Features
 
 - Add, edit and remove tasks.

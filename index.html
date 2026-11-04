@@ -1,24 +1,42 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + TS</title>
-  </head>
-  <body>
-    <div class="container">
-      <h1>Todo App</h1>
-      <form class="todo-form">
-        <input type="text" id="todo-input" placeholder="Add a new todo" />
-        <button type="submit">Add</button>
-      </form>
-      <!-- error handling message : CSS added:: .input-error & #error-message -->
-      <p id="error-message">Please enter a todo item</p>
-      <ul class="todo-list" id="todo-list"></ul>
 
-      <input type="color" id="colorPicker" />
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vite + TS</title>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Todo App</h1>
+    <form class="todo-form">
+      <input type="text" id="todo-input" placeholder="Add a new todo" />
+      <button type="submit">Add</button>
+    </form>
+    <!-- error handling message : CSS added:: .input-error & #error-message -->
+    <p id="error-message">Please enter a todo item</p>
+    <!-- Choose which tasks to show. -->
+    <div class="filters">
+      <button type="button" id="filter-all" class="selected">All</button>
+      <button type="button" id="filter-active">Active</button>
+      <button type="button" id="filter-completed">Completed</button>
     </div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+    <ul class="todo-list" id="todo-list"></ul>
+
+    <!-- Show progress for all tasks. -->
+    <div class="progress">
+      <label for="task-progress" id="progress-text">Completed: 0%</label>
+      <progress id="task-progress" value="0" max="100"></progress>
+    </div>
+
+    <div class="background">
+      <label for="colorPicker">Background</label>
+      <input type="color" id="colorPicker" value="#f2f5f3" />
+    </div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+
 </html>

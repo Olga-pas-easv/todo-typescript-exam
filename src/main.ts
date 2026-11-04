@@ -14,6 +14,7 @@
 
 // 1 Import the CSS file: This ensures that the styles are applied to the HTML elements.
 import './style.css';
+import { calculateProgress } from './progress';
 
 // Step 2: Define the Todo interface
 // Define the Todo interface: This interface defines the structure of a todo item.
@@ -26,13 +27,70 @@ export interface Todo {
 // Step 3: Initialize an empty array to store todos
 // Initialize an empty array: This array will store the list of todos.
 export let todos: Todo[] = [];
+// Only these three filter values are allowed.
+type Filter = 'all' | 'active' | 'completed';
+
+// Show all tasks when the app opens.
+let currentFilter: Filter = 'all';
 
 // Step 4: Get references to the HTML elements
 // Get references to the HTML elements: These references will be used to interact with the DOM
 const todoInput = document.getElementById('todo-input') as HTMLInputElement; // exist in HTML file
 const todoForm = document.querySelector('.todo-form') as HTMLFormElement;    // exist in HTML file
 const todoList = document.getElementById('todo-list') as HTMLUListElement;   // exist in HTML file
+const progressBar = document.getElementById('task-progress') as HTMLProgressElement;
+const progressText = document.getElementById('progress-text') as HTMLLabelElement;
 
+// Save tasks as text because Local Storage stores strings.
+const saveTodos = (): void => {
+  try {
+    localStorage.setItem('todos', JSON.stringify(todos));
+  } catch {
+    console.error('Could not save tasks.');
+  }
+};
+// Load saved tasks and check their fields before using them.
+const loadTodos = (): Todo[] => {
+  try {
+    const saved = localStorage.getItem('todos');
+
+    if (saved === null) {
+      return [];
+    }
+
+    const data: unknown = JSON.parse(saved);
+
+    if (!Array.isArray(data)) {
+      throw new Error('Saved tasks must be an array.');
+    }
+
+    const loadedTodos: Todo[] = [];
+
+    for (const item of data) {
+      if (
+        typeof item !== 'object' ||
+        item === null ||
+        typeof item.id !== 'number' ||
+        !Number.isFinite(item.id) ||
+        typeof item.text !== 'string' ||
+        typeof item.completed !== 'boolean'
+      ) {
+        throw new Error('Invalid saved task.');
+      }
+
+      loadedTodos.push({
+        id: item.id,
+        text: item.text,
+        completed: item.completed,
+      });
+    }
+
+    return loadedTodos;
+  } catch {
+    console.error('Could not load tasks.');
+    return [];
+  }
+};
 
 
 
@@ -47,8 +105,28 @@ export const addTodo = (text: string): void => {
     completed: false,
   };
   todos.push(newTodo);
+  saveTodos();
   console.log("Todo added: ", todos); // Log the updated list of todos to the console
   renderTodos(); // Render the updated list of todos => create the function next
+};
+
+// Switch the task between active and completed.
+export const toggleTodo = (id: number): void => {
+  const todo = todos.find(todo => todo.id === id);
+
+  if (todo) {
+    todo.completed = !todo.completed;
+    saveTodos();
+    renderTodos();
+  }
+};
+
+// Show progress for all tasks, including hidden ones.
+const updateProgress = (): void => {
+  const percentage = calculateProgress(todos);
+
+  progressBar.value = percentage;
+  progressText.textContent = `Completed: ${percentage}%`;
 };
 
 // Step 6: Function to render the list of todos
@@ -56,17 +134,38 @@ export const addTodo = (text: string): void => {
 const renderTodos = (): void => { // void because no return - what we are doing is updating the DOM
   // Clear the current list
   todoList.innerHTML = '';
+  updateProgress();
+  // Choose which tasks to show without changing the full list.
+  const filteredTodos = todos.filter(todo => {
+    if (currentFilter === 'active') {
+      return !todo.completed;
+    }
 
+    if (currentFilter === 'completed') {
+      return todo.completed;
+    }
+
+    return true;
+  });
+  
   // Iterate over the todos array and create list items for each todo
-  todos.forEach(todo => { // In this specific case, .forEach is more suitable because we are directly modifying the DOM for each todo item.
+  filteredTodos.forEach(todo => { // In this specific case, .forEach is more suitable because we are directly modifying the DOM for each todo item.
     const li = document.createElement('li');
     li.className = 'todo-item'; // Add a class to the list item
     // Use template literals to create the HTML content for each list item
     li.innerHTML = `
-      <span>${todo.text}</span>
+      <label>
+        <input type="checkbox" ${todo.completed ? 'checked' : ''}>
+        <span>${todo.text}</span>
+      </label>
       <button>Remove</button>
-         <button id="editBtn">Edit</button>
+      <button id="editBtn">Edit</button>
     `;
+
+    // Update the task status when the checkbox changes.
+    const checkbox = li.querySelector('input');
+    checkbox?.addEventListener('change', () => toggleTodo(todo.id));
+
     // addRemoveButtonListener is further down in the code. We have onclick in the function instead of template literals. More safe to use addEventListener.
     addRemoveButtonListener(li, todo.id); // Add event listener to the remove button. li is the parent element, and todo.id is the ID of the todo. 
     addEditButtonListener(li, todo.id); // Add event listener to the remove button. li is the parent element, and todo.id is the ID of the todo. 
@@ -74,23 +173,25 @@ const renderTodos = (): void => { // void because no return - what we are doing 
   });
 };
 
-// Step 6.1: Function to render the list of todos
-// Initial render
-renderTodos(); // Call the renderTodos function to display the initial list of todos : Should be at the end of the code to ensure that the function is defined before it is called.
-// The initial render is important to display the list of todos when the page is first loaded. Without it, the list would be empty until a new todo is added.
-// Move it when code is complete ( refactoring ) 
+const allButton = document.getElementById('filter-all') as HTMLButtonElement;
+const activeButton = document.getElementById('filter-active') as HTMLButtonElement;
+const completedButton = document.getElementById('filter-completed') as HTMLButtonElement;
 
+// Change the filter and highlight its button.
+const setFilter = (filter: Filter): void => {
+  currentFilter = filter;
 
-// Step 7: Event listener for the form submission
-// Event listener for the form submission: This listener handles the form submission, adds the new todo, and clears the input field.
-todoForm.addEventListener('submit', (event: Event) => {
-  event.preventDefault(); // Prevent the default form submission behavior
-  const text = todoInput.value.trim(); // Get the value of the input field and remove any leading or trailing whitespace - not needed, but good practice
-  if (text !== '') { // Check if the input field is not empty. Sort of a reverse falsey
-    addTodo(text);
-    todoInput.value = ''; // Clear the input field
-  }
-});
+  allButton.classList.toggle('selected', filter === 'all');
+  activeButton.classList.toggle('selected', filter === 'active');
+  completedButton.classList.toggle('selected', filter === 'completed');
+
+  renderTodos();
+};
+
+// Show the tasks for the clicked filter.
+allButton.addEventListener('click', () => setFilter('all'));
+activeButton.addEventListener('click', () => setFilter('active'));
+completedButton.addEventListener('click', () => setFilter('completed'));
 
 //Improved code for step 7 - user input validation - move the error message to the top of the Typescript file
 const errorMessage = document.getElementById('error-message') as HTMLParagraphElement; // Should be moved to the top + added to the HTML file
@@ -136,6 +237,7 @@ const addRemoveButtonListener = (li: HTMLLIElement, id: number): void => {
 // Function to remove a todo by ID: This function removes a todo from the array based on its ID.
 export const removeTodo = (id: number): void => {
   todos = todos.filter(todo => todo.id !== id);
+  saveTodos();
   renderTodos(); // Re-render the updated list of todos
 }; 
 
@@ -154,6 +256,7 @@ const editTodo = (id:number) => {
     const text = prompt('Edit todo', todo.text)
     if (text) {
       todo.text = text
+      saveTodos();
       renderTodos()
     }
   }
@@ -185,6 +288,10 @@ const initializeColorPicker = (): void => {
 document.addEventListener('DOMContentLoaded', () => {
   initializeColorPicker();
 });
+
+// Load and show tasks after all functions are ready.
+todos = loadTodos();
+renderTodos();
 
 /** 
  * Kristian: 6th of September 2024, BDE

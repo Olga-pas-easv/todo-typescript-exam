@@ -1,0 +1,47 @@
+name: Build check
+
+# Run when a pull request is opened or updated.
+# Also run after changes reach develop or main.
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+# Allow reading the repository.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Get the project files.
+      - name: Get code
+        uses: actions/checkout@v7
+
+      # Prepare Node.js and npm.
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # Install the versions from package-lock.json.
+      - name: Install dependencies
+        run: npm ci
+
+      # Check TypeScript and build the app.
+      - name: Build app
+        run: npm run build
+
+      # Check the progress calculation.
+      - name: Run unit tests
+        run: npx vitest run src/progress.test.ts
+
+      # Start the app and run all browser tests.
+      - name: Run tests
+        run: >
+          npx testcafe chrome:headless "test/*.js"
+          --app "npm run dev -- --port 5173 --strictPort"
+          --app-init-delay 5000
